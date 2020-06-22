@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "LordsMobile": {
+      "commandName": "Project",
+      "commandLineArgs": "migration -P \"Carayaca\" -K 11"
+    }
+  }
+}
