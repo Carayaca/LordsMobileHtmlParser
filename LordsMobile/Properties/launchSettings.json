@@ -2,7 +2,7 @@
   "profiles": {
     "LordsMobile": {
       "commandName": "Project",
-      "commandLineArgs": "migration -P \"Carayaca\" -K 11"
+      "commandLineArgs": "migration -P \"Carayaca\" -K 662-669"
     }
   }
 }

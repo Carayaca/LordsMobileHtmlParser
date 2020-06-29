@@ -84,7 +84,7 @@ namespace LordsMobile.Core
             if (fileName == null)
                 throw new ArgumentNullException(nameof(fileName));
 
-            var dict = new Dictionary<int, int>();
+            var dict = new SortedDictionary<int, int>();
 
             do
             {
@@ -125,7 +125,8 @@ namespace LordsMobile.Core
 
             using (var sw = new StreamWriter(fileName, false, Encoding.UTF8))
             {
-                foreach (var (kingdom, scrolls) in dict)
+                var sd = new SortedDictionary<int, int>(dict);
+                foreach (var (kingdom, scrolls) in sd)
                 {
                     sw.Write(kingdom);
                     sw.Write("; ");

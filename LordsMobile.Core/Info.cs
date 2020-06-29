@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Fizzler.Systems.HtmlAgilityPack;
@@ -61,6 +62,8 @@ namespace LordsMobile.Core
 
         private readonly IList<GuildDto> matchList = new List<GuildDto>();
 
+        private CancellationToken Token { get; } = CancellationToken.None;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Info"/> class.
         /// </summary>
@@ -113,9 +116,9 @@ namespace LordsMobile.Core
                 return;
             }
 
-            async Task Parse(string url, ICollection<PlayerDto> container)
+            async Task ParsePlayers(string url, ICollection<PlayerDto> container)
             {
-                var doc = await this.Resolver.Get(url);
+                var doc = await this.Resolver.Get(url, this.Token);
                 var table = doc.DocumentNode.QuerySelector(Markup.Table)
                             ?? throw new HtmlParseException($"Could not load players list for kingdom #{number}");
 
@@ -134,12 +137,31 @@ namespace LordsMobile.Core
                 }
             }
 
+            async Task<KingdomDto> ParseDescription()
+            {
+                var url = $"{Constants.BaseUri}kingdom/{this.KingdomsCache[number]}/";
+                var doc = await this.Resolver.Get(url, this.Token);
+
+                var header = doc.DocumentNode.QuerySelector("div.kingdomdesc")
+                             ?? throw new HtmlParseException($"Could not parse description for the kingdom '{this.KingdomsCache[number]}'");
+                var text = header.InnerHtml.ConvertToPlainText();
+
+                var dto = new KingdomDto();
+                dto.Imbue(text);
+
+                return dto;
+            }
+
+            var kingdom = await ParseDescription();
+            Log.Debug("Total guilds: {0}", kingdom.TotalGuilds);
+            Log.Debug("Total players: {0}", kingdom.TotalPlayers);
+
             IList<PlayerDto> players = new List<PlayerDto>();
             var baseUrl = $"{Constants.BaseUri}kingdom/{this.KingdomsCache[number]}/ranking/player/power/";
 
             Log.Debug("Load top 50 players list…");
-            await Parse(baseUrl, players);
-            await Parse($"{baseUrl}2", players);
+            await ParsePlayers(baseUrl, players);
+            await ParsePlayers($"{baseUrl}2", players);
 
             // find player rank
             var l = new SortedList<long, PlayerDto>(Comparer<long>.Create((x, y) => y.CompareTo(x)))
@@ -200,7 +222,7 @@ namespace LordsMobile.Core
             }
 
             var url = $@"{Constants.BaseUri}player/{playerName}";
-            var doc = await this.Resolver.Get(url);
+            var doc = await this.Resolver.Get(url, this.Token);
 
             var desc = doc.DocumentNode.QuerySelector("div.playerdesc")
                 ?? throw new HtmlParseException($@"Player {playerName} is not found");
@@ -263,7 +285,7 @@ namespace LordsMobile.Core
             Log.Debug("Could not found kingdoms cache, donwloading…");
             IDictionary<int, string> dict = new Dictionary<int, string>();
 
-            var doc = await this.Resolver.Get($@"{Constants.BaseUri}kingdom");
+            var doc = await this.Resolver.Get($@"{Constants.BaseUri}kingdom", this.Token);
             var table = doc.DocumentNode.QuerySelector("div.mosaicview1")
                         ?? throw new HtmlParseException("Fail to parse kingdom list");
 
@@ -304,9 +326,10 @@ namespace LordsMobile.Core
         {
             async Task ParseInner(GuildDto dto)
             {
-                var url = $"{Constants.BaseUri}alliance/{dto.Name}";
-                var doc = await this.Resolver.Get(url);
+                var url = $"{Constants.BaseUri}alliance/{dto.Name}/";
+                var doc = await this.Resolver.Get(url, this.Token);
 
+                // parse description
                 var header = doc.DocumentNode.QuerySelector("div.allidesc")
                              ?? throw new HtmlParseException($"Could not parse description for the guild '{dto.Name}'");
                 var text = header.InnerHtml.ConvertToPlainText();
@@ -341,7 +364,7 @@ namespace LordsMobile.Core
             // ReSharper disable once VariableHidesOuterVariable
             async Task Parse(string url, ICollection<GuildDto> container)
             {
-                var doc = await this.Resolver.Get(url);
+                var doc = await this.Resolver.Get(url, this.Token);
                 var table = doc.DocumentNode.QuerySelector(Markup.Table)
                             ?? throw new HtmlParseException($"Could not load guilds list from kingdom #{kingdom}");
 
@@ -369,13 +392,32 @@ namespace LordsMobile.Core
                 }
             }
 
-            var url = $"{Constants.BaseUri}kingdom/{this.KingdomsCache[kingdom]}/ranking/alliance/power";
+            var url = $"{Constants.BaseUri}kingdom/{this.KingdomsCache[kingdom]}/ranking/alliance/power/";
 
             Log.Debug("Parsing guilds…");
             IList<GuildDto> guilds = new List<GuildDto>();
             await Parse(url, guilds);
 
             return guilds;
+        }
+
+        /// <summary>
+        /// Compare guilds by <see cref="GuildDto.Tag"/>.
+        /// </summary>
+        /// <seealso cref="IEqualityComparer{GuildDto}" />
+        private class TagComparer : IEqualityComparer<GuildDto>
+        {
+            /// <inheritdoc />
+            public bool Equals(GuildDto x, GuildDto y)
+            {
+                return StringComparer.InvariantCulture.Equals(x?.Tag, y?.Tag);
+            }
+
+            /// <inheritdoc />
+            public int GetHashCode(GuildDto obj)
+            {
+                return StringComparer.InvariantCulture.GetHashCode(obj.Tag);
+            }
         }
 
         private void SaveMatchList()
@@ -385,10 +427,47 @@ namespace LordsMobile.Core
                 return;
             }
 
+            ISet<GuildDto> total = new HashSet<GuildDto>(this.matchList, new TagComparer());
+
+            var fileName = Cache.FullPath("match.json");
+
+            if (File.Exists(fileName))
+            {
+                using (var sr = new StreamReader(fileName, Encoding.UTF8))
+                using (var jsonTextReader = new JsonTextReader(sr))
+                {
+                    var serializer = new JsonSerializer();
+                    var obj = serializer.Deserialize<GuildDto[]>(jsonTextReader);
+                    if (obj != null)
+                    {
+                        // load the previous list without duplicates
+                        total.UnionWith(obj);
+                    }
+                }
+            }
+
+            using (var fs = File.OpenWrite(fileName))
+            using (var wr = new StreamWriter(fs, Encoding.UTF8))
+            {
+                var serializer = new JsonSerializer
+                                     {
+                                         Culture = CultureInfo.InvariantCulture,
+                                         Formatting = Formatting.Indented
+                                     };
+                serializer.Serialize(wr, total);
+            }
+
             using (var sw = new StreamWriter("List.txt", false, Encoding.UTF8))
             {
-                foreach (var it in this.matchList)
+                var previousKingdom = -1;
+                foreach (var it in total.OrderBy(g => g.Kingdom))
                 {
+                    if (previousKingdom != it.Kingdom)
+                    {
+                        previousKingdom = it.Kingdom;
+                        sw.WriteLine(new string('-', 50));
+                    }
+
                     sw.Write("#{0}; ", it.Kingdom);
                     sw.Write("{0} / {1}; ", it.Name, it.Tag);
                     sw.Write("{0}; ", it.Might.ToMetric());

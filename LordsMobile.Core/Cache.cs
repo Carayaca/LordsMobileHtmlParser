@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
@@ -19,10 +20,19 @@ namespace LordsMobile.Core
     {
         private DirectoryInfo BaseDir { get; }
 
+        private static class Configuration
+        {
+            public const string CacheThreshold = "cache.threshold";
+        }
+
+        private const string CachePrefix = "cache";
+
         /// <summary>
         /// Expiration period in cache.
         /// </summary>
-        private static readonly TimeSpan Expire = TimeSpan.FromHours(24);
+        private const int ExpireDefaultHours = 36;
+
+        private TimeSpan Expire { get; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Cache"/> class.
@@ -30,6 +40,13 @@ namespace LordsMobile.Core
         /// <param name="dir">The cache directory.</param>
         public Cache(string dir)
         {
+            if (!int.TryParse(ConfigurationManager.AppSettings[Configuration.CacheThreshold], out var hours))
+            {
+                hours = ExpireDefaultHours;
+            }
+
+            this.Expire = TimeSpan.FromHours(hours);
+
             if (dir == null)
             {
                 throw new ArgumentNullException(nameof(dir));
@@ -46,10 +63,19 @@ namespace LordsMobile.Core
 
         private static IDictionary<Type, string> TypeLocation { get; } = new Dictionary<Type, string>
             {
-                { typeof(PlayerDto), "cache/players/" },
-                { typeof(GuildDto), "cache/guilds/" }
+                { typeof(PlayerDto), Path.Combine(CachePrefix, "players") },
+                { typeof(GuildDto), Path.Combine(CachePrefix, "guilds") }
             };
 
+        /// <summary>
+        /// Gets the full path.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <returns>The full path.</returns>
+        public string FullPath(string path)
+        {
+            return Path.Combine(this.BaseDir.FullName, CachePrefix, path);
+        }
 
         /// <summary>
         /// Try to load object from cache.
@@ -84,7 +110,7 @@ namespace LordsMobile.Core
             }
 
             var dT = DateTime.Now - fi.LastWriteTime;
-            if (dT > Expire)
+            if (dT > this.Expire)
             {
                 return false;
             }

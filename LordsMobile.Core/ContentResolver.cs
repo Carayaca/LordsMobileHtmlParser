@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 using HtmlAgilityPack;
 
@@ -11,9 +12,9 @@ namespace LordsMobile.Core
     internal class ContentResolver : IContentResolver
     {
         /// <inheritdoc />
-        public Task<HtmlDocument> Get(string url)
+        public Task<HtmlDocument> Get(string url, CancellationToken token)
         {
-            return Request.Get(url);
+            return Request.Get(url, token);
         }
     }
 }

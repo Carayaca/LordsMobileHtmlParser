@@ -1,4 +1,5 @@
 ﻿using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 using HtmlAgilityPack;
@@ -15,13 +16,12 @@ namespace LordsMobile.Core
         /// <summary>
         /// Get the http content.
         /// </summary>
-        /// <param name="uri">
-        /// The URI.
-        /// </param>
+        /// <param name="uri">The URI.</param>
+        /// <param name="token">The cancellation token.</param>
         /// <returns>
-        /// The <see cref="Task"/>.
+        /// The <see cref="Task" />.
         /// </returns>
-        public static async Task<HtmlDocument> Get(string uri)
+        public static async Task<HtmlDocument> Get(string uri, CancellationToken token)
         {
             using (var http = new HttpClient())
             {
@@ -32,7 +32,7 @@ namespace LordsMobile.Core
                 http.DefaultRequestHeaders.Accept.Clear();
                 http.DefaultRequestHeaders.Accept.ParseAdd("text/javascript, text/html, application/xml, text/xml, */*");
                 // GET
-                using (var message = await http.GetAsync(uri, HttpCompletionOption.ResponseContentRead))
+                using (var message = await http.GetAsync(uri, HttpCompletionOption.ResponseContentRead, token))
                 using (var s = await message.Content.ReadAsStreamAsync())
                 {
                     var doc = new HtmlDocument
