@@ -194,12 +194,12 @@ namespace LordsMobile.Core
             if (scrolls <= options.Threshold)
             {
                 var arr = (await ParseKingdomGuilds(number))
-                              .Where(g => g.Language == "Russian")
+                              .Where(g => g.Language.Equals(options.Language, StringComparison.InvariantCultureIgnoreCase))
                               .ToArray();
 
                 if (arr.Any())
                 {
-                    Log.Info("#{0}: Found {1}:", number, "russian guild".ToQuantity(arr.Length));
+                    Log.Info("#{0}: Found {1}:", number, $"{options.Language} guild".ToQuantity(arr.Length));
                     foreach (var guild in arr.OrderByDescending(g => g.Might))
                     {
                         Log.Info("{0} / {1}; {2}; {3}", guild.Name, guild.Tag, guild.Might.ToMetric(), "member".ToQuantity(guild.MemberCount));

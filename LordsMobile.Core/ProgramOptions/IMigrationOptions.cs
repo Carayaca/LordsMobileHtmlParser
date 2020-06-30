@@ -19,5 +19,10 @@
         /// Gets or sets the scrolls threshold.
         /// </summary>
         public int Threshold { get; set; }
+
+        /// <summary>
+        /// Gets or sets the guild language.
+        /// </summary>
+        public string Language { get; set; }
     }
 }

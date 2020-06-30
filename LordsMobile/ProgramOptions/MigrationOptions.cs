@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Linq;
 
 using CommandLine;
@@ -24,6 +25,7 @@ namespace LordsMobile.ProgramOptions
         )]
         public string Player { get; set; }
 
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         private string kingdomsRange;
 
         /// <inheritdoc />
@@ -52,6 +54,13 @@ namespace LordsMobile.ProgramOptions
             , Default = 1
         )]
         public int Threshold { get; set; }
+
+        /// <inheritdoc />
+        [Option('L', "language"
+            , HelpText = "Select guilds by language."
+            , Default = "Russian"
+        )]
+        public string Language { get; set; }
 
         /// <summary>
         /// Gets the examples.
