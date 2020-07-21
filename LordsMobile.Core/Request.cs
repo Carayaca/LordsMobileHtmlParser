@@ -33,14 +33,17 @@ namespace LordsMobile.Core
                 http.DefaultRequestHeaders.Accept.ParseAdd("text/javascript, text/html, application/xml, text/xml, */*");
                 // GET
                 using (var message = await http.GetAsync(uri, HttpCompletionOption.ResponseContentRead, token))
-                using (var s = await message.Content.ReadAsStreamAsync())
                 {
-                    var doc = new HtmlDocument
-                                  {
-                                      OptionFixNestedTags = true
-                                  };
-                    doc.Load(s);
-                    return doc;
+                    message.EnsureSuccessStatusCode();
+                    /*await*/ using (var s = await message.Content.ReadAsStreamAsync())
+                    {
+                        var doc = new HtmlDocument
+                                      {
+                                          OptionFixNestedTags = true
+                                      };
+                        doc.Load(s);
+                        return doc;
+                    }
                 }
             }
         }

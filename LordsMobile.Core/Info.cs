@@ -92,19 +92,24 @@ namespace LordsMobile.Core
             var range = Range.Interpret(options.KingdomsRange);
             this.matchList.Clear();
 
-            foreach (var number in range)
+            try
             {
-                try
+                foreach (var number in range)
                 {
-                    await this.ParseKingdom(number, player, options);
-                }
-                catch (HtmlParseException e)
-                {
-                    Log.Error(e.Message);
+                    try
+                    {
+                        await this.ParseKingdom(number, player, options);
+                    }
+                    catch (HtmlParseException e)
+                    {
+                        Log.Error(e.Message);
+                    }
                 }
             }
-
-            this.SaveMatchList();
+            finally
+            {
+                this.SaveMatchList();
+            }
         }
 
         private async Task ParseKingdom(int number, PlayerDto player, IMigrationOptions options)
