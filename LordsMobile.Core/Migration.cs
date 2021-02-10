@@ -17,12 +17,12 @@ namespace LordsMobile.Core
         }
 
         private static Interval<int> Point(int v) =>
-            new Interval<int>(
+            new(
                 new IntervalValue<int>(v, IntervalValueType.Inclusive),
                 new IntervalValue<int>(v, IntervalValueType.Inclusive));
 
         private static Interval<int> Range(int a, int b) =>
-            new Interval<int>(
+            new(
                 new IntervalValue<int>(a, IntervalValueType.Inclusive),
                 new IntervalValue<int>(b, IntervalValueType.Inclusive));
 

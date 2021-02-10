@@ -10,7 +10,7 @@ namespace LordsMobile.Core
     /// </summary>
     internal static class Utils
     {
-        private static CultureInfo PointCulture { get; } = new CultureInfo("en")
+        private static CultureInfo PointCulture { get; } = new("en")
                                                                {
                                                                    NumberFormat =
                                                                        {

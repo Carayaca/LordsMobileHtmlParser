@@ -20,9 +20,6 @@ namespace LordsMobile.Core
     public class Interval<T> : IEquatable<Interval<T>>
         where T : IComparable<T>, IEquatable<T>
     {
-        public Interval()
-        { }
-
         public Interval(IntervalValue<T> minimum, IntervalValue<T> maximum)
         {
             this.Minimum = minimum;
@@ -155,7 +152,7 @@ namespace LordsMobile.Core
         }
     }
 
-    public struct IntervalValue<T> : IEquatable<IntervalValue<T>>
+    public readonly struct IntervalValue<T> : IEquatable<IntervalValue<T>>
         where T : IComparable<T>, IEquatable<T>
     {
         public IntervalValue(T value, IntervalValueType type)

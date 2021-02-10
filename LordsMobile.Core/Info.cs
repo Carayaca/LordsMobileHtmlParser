@@ -40,7 +40,7 @@ namespace LordsMobile.Core
 
             public static readonly Regex PlayerMight = new Regex(@"might of (?<Might>\d[^\s]+)", RegexOptions.Compiled);
 
-            public static readonly Regex PlayerKills = new Regex(@"kills of (?<Kills>\d.*)\.", RegexOptions.Compiled);
+            public static readonly Regex PlayerKills = new Regex(@"kills of (?<Kills>\d.*?)\.\s", RegexOptions.Compiled);
         }
 
         private static class Markup
@@ -52,7 +52,7 @@ namespace LordsMobile.Core
 
         private IContentResolver Resolver { get; }
 
-        private readonly Lazy<IDictionary<int, string>> pvtKingdomsCache = new Lazy<IDictionary<int, string>>(LoadKingdomsCache);
+        private readonly Lazy<IDictionary<int, string>> pvtKingdomsCache = new(LoadKingdomsCache);
 
         private IDictionary<int, string> KingdomsCache => this.pvtKingdomsCache.Value;
 
@@ -83,10 +83,10 @@ namespace LordsMobile.Core
         public async Task ParseKingdom(IMigrationOptions options)
         {
             // pre-load the kingdoms cache
-            await CheckKingdomsCache();
+            await this.CheckKingdomsCache();
 
             Log.Debug("Loading player {Name} …", options.Player);
-            var player = await LoadPlayer(options.Player);
+            var player = await this.LoadPlayer(options.Player);
             Log.Debug("Player {Name} has {1:#,##0} might", player.Name, player.Might);
 
             var range = Range.Interpret(options.KingdomsRange);
@@ -198,7 +198,7 @@ namespace LordsMobile.Core
 
             if (scrolls <= options.Threshold)
             {
-                var arr = (await ParseKingdomGuilds(number))
+                var arr = (await this.ParseKingdomGuilds(number))
                               .Where(g => g.Language.Equals(options.Language, StringComparison.InvariantCultureIgnoreCase))
                               .ToArray();
 
@@ -243,6 +243,12 @@ namespace LordsMobile.Core
                             Name = playerName,
                             Might = m.Groups["Might"].Value.ToLong()
                         };
+
+            m = Rx.PlayerKills.Match(desc.InnerText);
+            if (m.Success)
+            {
+                p.Kills = m.Groups["Kills"].Value.ToLong();
+            }
 
             Cache.Update(playerName, p);
             return p;
@@ -323,7 +329,7 @@ namespace LordsMobile.Core
         {
             if (!File.Exists(KingdomsJson))
             {
-                await CreateKingdomsCache();
+                await this.CreateKingdomsCache();
             }
         }
 

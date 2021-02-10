@@ -35,7 +35,7 @@ namespace LordsMobile.Core
                 using (var message = await http.GetAsync(uri, HttpCompletionOption.ResponseContentRead, token))
                 {
                     message.EnsureSuccessStatusCode();
-                    /*await*/ using (var s = await message.Content.ReadAsStreamAsync())
+                    await using (var s = await message.Content.ReadAsStreamAsync(token))
                     {
                         var doc = new HtmlDocument
                                       {
